@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.stats import kendalltau
+
 
 # Spearman Rank Correlation coefficient rs
 def spearman(R, Q):
@@ -16,3 +16,27 @@ def weighted_spearman(R, Q):
     numerator = 6 * sum((R - Q)**2 * ((N - R + 1) + (N - Q + 1)))
     rW = 1 - (numerator / denominator)
     return rW
+
+# pearson coefficient
+def pearson_coeff(R, Q):
+    """
+    Calculate Pearson correlation coefficient between two vectors
+    Parameters
+    -----------
+        R : ndarray
+            First vector containing values
+        Q : ndarray
+            Second vector containing values
+    Returns
+    --------
+        float
+            Value of correlation coefficient between two vectors
+    Examples
+    ----------
+    >>> corr = pearson_coeff(R, Q)
+    """
+    
+    numerator = np.sum((R - np.mean(R)) * (Q - np.mean(Q)))
+    denominator = np.sqrt(np.sum((R - np.mean(R))**2) * np.sum((Q - np.mean(Q))**2))
+    corr = numerator / denominator
+    return corr
