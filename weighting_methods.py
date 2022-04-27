@@ -6,16 +6,52 @@ import pandas as pd
 
 
 # equal weighting
-def equal_weighting(X):
-    N = np.shape(X)[1]
+def equal_weighting(matrix):
+    """
+    Calculate criteria weights using objective Equal weighting method
+
+    Parameters
+    -----------
+        matrix : ndarray
+            Decision matrix with performance values of m alternatives and n criteria
+
+    Returns
+    --------
+        ndarray
+            vector of criteria weights
+
+    Examples
+    ----------
+    >>> weights = equal_weighting(matrix)
+    """
+
+    N = np.shape(matrix)[1]
     return np.ones(N) / N
 
 
 # entropy weighting
-def entropy_weighting(X):
+def entropy_weighting(matrix):
+    """
+    Calculate criteria weights using objective Entropy weighting method
+
+    Parameters
+    -----------
+        matrix : ndarray
+            Decision matrix with performance values of m alternatives and n criteria
+
+    Returns
+    --------
+        ndarray
+            vector of criteria weights
+
+    Examples
+    ----------
+    >>> weights = entropy_weighting(matrix)
+    """
+
     # normalization for profit criteria
-    criteria_type = np.ones(np.shape(X)[1])
-    pij = sum_normalization(X, criteria_type)
+    criteria_type = np.ones(np.shape(matrix)[1])
+    pij = sum_normalization(matrix, criteria_type)
     m, n = np.shape(pij)
 
     H = np.zeros((m, n))
@@ -32,16 +68,52 @@ def entropy_weighting(X):
 
 
 # standard deviation weighting
-def std_weighting(X):
-    stdv = np.std(X, axis = 0)
+def std_weighting(matrix):
+    """
+    Calculate criteria weights using objective Standard deviation weighting method
+
+    Parameters
+    -----------
+        matrix : ndarray
+            Decision matrix with performance values of m alternatives and n criteria
+            
+    Returns
+    --------
+        ndarray
+            vector of criteria weights
+
+    Examples
+    ----------
+    >>> weights = std_weighting(matrix)
+    """
+
+    stdv = np.std(matrix, axis = 0)
     return stdv / np.sum(stdv)
 
 
 # CRITIC weighting
-def critic_weighting(X):
+def critic_weighting(matrix):
+    """
+    Calculate criteria weights using objective CRITIC weighting method
+
+    Parameters
+    -----------
+        matrix : ndarray
+            Decision matrix with performance values of m alternatives and n criteria
+            
+    Returns
+    --------
+        ndarray
+            vector of criteria weights
+
+    Examples
+    ----------
+    >>> weights = critic_weighting(matrix)
+    """
+    
     # normalization for profit criteria
-    criteria_type = np.ones(np.shape(X)[1])
-    x_norm = minmax_normalization(X, criteria_type)
+    criteria_type = np.ones(np.shape(matrix)[1])
+    x_norm = minmax_normalization(matrix, criteria_type)
     std = np.std(x_norm, axis = 0)
     n = np.shape(x_norm)[1]
     correlations = np.zeros((n, n))

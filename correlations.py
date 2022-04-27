@@ -3,6 +3,26 @@ import numpy as np
 
 # Spearman Rank Correlation coefficient rs
 def spearman(R, Q):
+    """
+    Calculate Spearman rank correlation coefficient between two vectors
+
+    Parameters
+    -----------
+        R : ndarray
+            First vector containing values
+        Q : ndarray
+            Second vector containing values
+
+    Returns
+    --------
+        float
+            Value of correlation coefficient between two vectors
+
+    Examples
+    ----------
+    >>> rS = spearman(R, Q)
+    """
+
     N = len(R)
     denominator = N*(N**2-1)
     numerator = 6*sum((R-Q)**2)
@@ -11,26 +31,49 @@ def spearman(R, Q):
 
 # Weighted Spearman Rank Correlation coefficient rw
 def weighted_spearman(R, Q):
-    N = len(R)
-    denominator = N**4 + N**3 - N**2 - N
-    numerator = 6 * sum((R - Q)**2 * ((N - R + 1) + (N - Q + 1)))
-    rW = 1 - (numerator / denominator)
-    return rW
-
-# pearson coefficient
-def pearson_coeff(R, Q):
     """
-    Calculate Pearson correlation coefficient between two vectors
+    Calculate Weighted Spearman rank correlation coefficient between two vectors
+
     Parameters
     -----------
         R : ndarray
             First vector containing values
         Q : ndarray
             Second vector containing values
+
     Returns
     --------
         float
             Value of correlation coefficient between two vectors
+
+    Examples
+    ---------
+    >>> rW = weighted_spearman(R, Q)
+    """
+
+    N = len(R)
+    denominator = N**4 + N**3 - N**2 - N
+    numerator = 6 * sum((R - Q)**2 * ((N - R + 1) + (N - Q + 1)))
+    rW = 1 - (numerator / denominator)
+    return rW
+
+# Pearson coefficient
+def pearson_coeff(R, Q):
+    """
+    Calculate Pearson correlation coefficient between two vectors
+
+    Parameters
+    -----------
+        R : ndarray
+            First vector containing values
+        Q : ndarray
+            Second vector containing values
+
+    Returns
+    --------
+        float
+            Value of correlation coefficient between two vectors
+
     Examples
     ----------
     >>> corr = pearson_coeff(R, Q)
