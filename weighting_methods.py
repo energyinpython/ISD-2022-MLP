@@ -126,3 +126,32 @@ def critic_weighting(matrix):
     C = std * suma
     w = C / (np.sum(C, axis = 0))
     return w
+
+    # Statistical Variance weighting
+def stat_variance_weighting(matrix):
+    """
+    Calculate criteria weights using objective Statistical variance weighting method.
+
+    Parameters
+    ----------
+        matrix : ndarray
+            Decision matrix with performance values of m alternatives and n criteria.
+            
+    Returns
+    -------
+        ndarray
+            Vector of criteria weights.
+            
+    Examples
+    ---------
+    >>> weights = stat_var_weighting(matrix)
+    """
+
+    # Normalize the decision matrix `matrix` with `minmax_normalization` method from normalizations
+    types = np.ones(np.shape(matrix)[1])
+    xn = minmax_normalization(matrix, types)
+    # Calculate the statistical variance for each criterion
+    v = np.mean(np.square(xn - np.mean(xn, axis = 0)), axis = 0)
+    # Calculate the final weights of the criteria
+    w = v / np.sum(v)
+    return w

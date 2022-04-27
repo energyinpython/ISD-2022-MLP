@@ -94,10 +94,10 @@ def main():
     warnings.filterwarnings("ignore")
 
     # =================================================================
-    '''
+    
     # Part 1
     # Datasets preparation
-    
+    '''
     path = 'DATASET'
     m = 30
 
@@ -190,6 +190,7 @@ def main():
     print('Best parameters found:\n', clf.best_params_)
     '''
 
+    
     # Testing MLP Regressor model with parameters selected in previous step on test dataset
     m = 30
     list_alt_names_latex = [r'$A_{' + str(i + 1) + '}$' for i in range(0, m)]
