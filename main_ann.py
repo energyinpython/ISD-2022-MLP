@@ -13,9 +13,17 @@ from sklearn.model_selection import GridSearchCV
 from weighting_methods import stat_variance_weighting
 from normalizations import minmax_normalization
 from rank_preferences import rank_preferences
-from correlations import spearman
+# from correlations import spearman
 
 from saw import SAW
+
+import statsmodels.api as sm
+# from linearmodels import PooledOLS
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score
+
+from pyrepo_mcda import correlations as corrs
+from sklearn.model_selection import cross_val_score
 
 
 # Functions for result visualizations
@@ -90,6 +98,86 @@ def plot_rankings(results):
     #sns.set_style("darkgrid")
     plot_scatter(data = results, model_compare = model_compare)
 
+
+
+def plot_barplot(df_plot, legend_title):
+    """
+    Visualization method to display column chart of alternatives rankings obtained with 
+    different methods.
+    Parameters
+    ----------
+        df_plot : DataFrame
+            DataFrame containing rankings of alternatives obtained with different methods.
+            The particular rankings are included in subsequent columns of DataFrame.
+        title : str
+            Title of the legend (Name of group of explored methods, for example MCDA methods or Distance metrics).
+    Examples
+    ----------
+    >>> plot_barplot(df_plot, legend_title='MCDA methods')
+    """
+    step = 2
+    list_rank = np.arange(1, len(df_plot) + 1, step)
+    # colors = ['#1f77b4', 'orange', 'green']
+
+    ax = df_plot.plot(kind='bar', width = 0.8, stacked=False, edgecolor = 'black', figsize = (9,4))
+    ax.set_xlabel('Alternatives', fontsize = 12)
+    ax.set_ylabel('Rank', fontsize = 12)
+    ax.set_yticks(list_rank)
+
+    ax.set_xticklabels(df_plot.index, rotation = 'horizontal')
+    ax.tick_params(axis = 'both', labelsize = 12)
+    y_ticks = ax.yaxis.get_major_ticks()
+    ax.set_ylim(0, len(df_plot) + 1)
+
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left',
+    ncol=4, mode="expand", borderaxespad=0., edgecolor = 'black', title = legend_title, fontsize = 12)
+
+    ax.grid(True, linestyle = ':')
+    ax.set_axisbelow(True)
+    plt.tight_layout()
+    plt.savefig('./results/' + 'bar_chart_' + legend_title + '.pdf')
+    plt.show()
+
+
+# heat maps with correlations
+def draw_heatmap(df_new_heatmap, title):
+    """
+    Visualization method to display heatmap with correlations of compared rankings generated using different methods
+    
+    Parameters
+    ----------
+        data : DataFrame
+            DataFrame with correlation values between compared rankings
+        title : str
+            title of chart containing name of used correlation coefficient
+    Examples
+    ---------
+    >>> draw_heatmap(df_new_heatmap, title)
+    """
+    plt.figure(figsize = (6, 4))
+    sns.set(font_scale = 1.6)
+    heatmap = sns.heatmap(df_new_heatmap, annot=True, fmt=".4f", cmap="GnBu",
+                          linewidth=0.5, linecolor='w')
+    plt.yticks(va="center")
+    plt.xlabel('Rankings')
+    plt.title(title + ' correlation coefficient')
+    plt.tight_layout()
+    plt.savefig('./results/' + 'correlations_' + title + '.pdf')
+    plt.show()
+
+
+# Create dictionary class
+class Create_dictionary(dict):
+  
+    # __init__ function
+    def __init__(self):
+        self = dict()
+          
+    # Function to add key:value
+    def add(self, key, value):
+        self[key] = value
+
+
 def main():
     warnings.filterwarnings("ignore")
 
@@ -101,11 +189,14 @@ def main():
     path = 'DATASET'
     m = 30
 
-    str_years = [str(y) for y in range(2016, 2021)]
+    str_years = [str(y) for y in range(2010, 2021)]
     list_alt_names = ['A' + str(i) for i in range(1, m + 1)]
     list_alt_names_latex = [r'$A_{' + str(i + 1) + '}$' for i in range(0, m)]
     preferences = pd.DataFrame(index = list_alt_names)
     rankings = pd.DataFrame(index = list_alt_names)
+
+    # types
+    types = np.array([1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1])
 
 
     for el, year in enumerate(str_years):
@@ -113,13 +204,11 @@ def main():
         pathfile = os.path.join(path, file)
         data = pd.read_csv(pathfile, index_col = 'Country')
         
-        df_data = data.iloc[:len(data) - 1, :]
-        # types
-        types = data.iloc[len(data) - 1, :].to_numpy()
-        
-        list_of_cols = list(df_data.columns)
+        list_of_cols = list(data.columns)
         # matrix
-        matrix = df_data.to_numpy()
+        matrix = data.to_numpy()
+        print(types.shape)
+        print(matrix.shape)
         
         # weights
         weights = stat_variance_weighting(matrix)
@@ -130,7 +219,7 @@ def main():
         preferences[year] = pref
 
         # normalized matrix for ML dataset
-        yl = [year] * df_data.shape[0]
+        yl = [year] * data.shape[0]
         nmat = minmax_normalization(matrix, types)
         df_nmat = pd.DataFrame(data=nmat, index = list_alt_names, columns = list(data.columns))
         df_nmat['Year'] = yl
@@ -151,7 +240,7 @@ def main():
     df_train = df_nmat_full[(df_nmat_full['Year'] != '2020')]
     df_test = df_nmat_full[df_nmat_full['Year'] == '2020']
 
-    df_train.to_csv('results/dataset_train.csv')
+    df_train.to_csv('results/dataset.csv')
     df_test.to_csv('results/dataset_test.csv')
     '''
 
@@ -159,19 +248,22 @@ def main():
     # Machine Learning procedures
     # Part 2
     # load the data
-    df_train = pd.read_csv('results/dataset_train.csv', index_col = 'Ai')
-    df_test = pd.read_csv('results/dataset_test.csv', index_col = 'Ai')
-
-    df_train = df_train.drop('Year', axis = 1)
-    df_test = df_test.drop('Year', axis = 1)
-
-    # train dataset
-    X_train = df_train.iloc[:, :-1].to_numpy()
-    y_train = df_train.iloc[:, -1].to_numpy()
+    df_dataset = pd.read_csv('results/dataset.csv', index_col = 'Ai')
+    df_dataset = df_dataset.drop('Year', axis = 1)
     
+    dataset = df_dataset.to_numpy()
+    X = dataset[:, :-1]
+    y = dataset[:, -1]
 
+    # Split the dataset into the train and test datasets.
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    print('Shape of train dataset: ', X_train.shape)
+    print('Shape of test dataset: ', X_test.shape)
+    
     # ======================================================================
     # Selection of hyperparameters for MLP Regressor Model using GridSearchCV
+    
+
     '''
     # grid search cv
     mlp = MLPRegressor()
@@ -192,41 +284,172 @@ def main():
 
     
     # Testing MLP Regressor model with parameters selected in previous step on test dataset
-    m = 30
-    list_alt_names_latex = [r'$A_{' + str(i + 1) + '}$' for i in range(0, m)]
-
-    # test dataset
-    X_test = df_test.iloc[:, :-1].to_numpy()
-    y_test = df_test.iloc[:, -1].to_numpy()
-
-    rankings_results = pd.DataFrame(index = list_alt_names_latex)
-
+    
     model = MLPRegressor(hidden_layer_sizes = (500, ), 
     activation = 'tanh', 
     solver = 'lbfgs', 
     alpha = 0.0001, 
-    learning_rate = 'constant', 
+    learning_rate = 'adaptive', 
     learning_rate_init = 0.001, 
     max_iter=1000,
     tol = 0.0001, 
     shuffle = True,
     )
 
+    # Valid options are ['accuracy', 'adjusted_rand_score', 'average_precision', 
+    # 'f1', 'log_loss', 'mean_absolute_error', 'mean_squared_error', 'precision', 'r2', 
+    # 'recall', 'roc_auc']
+    score = cross_val_score(model, X, y, cv=5, scoring = 'r2')
+    df_score = pd.DataFrame(score)
+    df_score.to_csv('results/cross_val_score.csv')
+    
+    ss = np.zeros((4, 2))
+    df_scores = pd.DataFrame(ss, index = ['60 samples MLP', '60 samples OLS','30 samples MLP', '30 samples OLS'], columns = ['Spearman', 'r2'])
+
+    # train MLP
     model.fit(X_train, y_train)
+    # only for adam solver
+    # pd.DataFrame(model.loss_curve_).plot()
+    # plt.show()
+
+    # MLP Sperman 60
     y_pred = model.predict(X_test)
+    spearman_coeff = corrs.spearman(y_test, y_pred)
+    print(spearman_coeff)
+    df_scores.iloc[0, 0] = spearman_coeff
 
-    test_rank = rank_preferences(y_test, reverse = True)
-    pred_rank = rank_preferences(y_pred, reverse = True)
+    # MLP r2 60
+    r2_coeff = r2_score(y_test, y_pred)
+    print(r2_coeff)
+    df_scores.iloc[0, 1] = r2_coeff
 
-    # Calculation of correlation between real and predicted rank
-    print(spearman(test_rank, pred_rank))
-    rankings_results['Real rank'] = test_rank
-    rankings_results['Predicted rank'] = pred_rank
-    rankings_results.to_csv('results/rankings_results.csv')
 
-    plot_rankings(rankings_results)
+    # Model OLS
+    # https://www.statsmodels.org/dev/examples/notebooks/generated/predict.html
+
+    # https://towardsdatascience.com/a-guide-to-panel-data-regression-theoretics-and-implementation-with-python-4c84c5055cf8
+    
+    # https://www4.eco.unicamp.br/docentes/gori/images/arquivos/PanelData/HO235_Lesson4_PooledPanelData.pdf
+    X_train_ols = sm.add_constant(X_train)
+    X_test_ols = sm.add_constant(X_test)
+    
+    # train OLS
+    model_ols = sm.OLS(y_train, X_train_ols)
+    model_ols_res = model_ols.fit()
+
+    y_pred_ols = model_ols_res.predict(X_test_ols)
+
+    # OLS Spearman 60
+    spearman_coeff = corrs.spearman(y_test, y_pred_ols)
+    print(spearman_coeff)
+    df_scores.iloc[1, 0] = spearman_coeff
+
+    # OLS r2 60
+    r2_coeff = r2_score(y_test, y_pred_ols)
+    print(r2_coeff)
+    df_scores.iloc[1, 1] = r2_coeff
     
     
+    # plot
+    x1 = np.arange(1, len(y_pred_ols) + 1, 1)
+    fig, ax = plt.subplots(figsize=(11, 5))
+    ax.plot(x1, y_test, "o", label = 'Real value')
+    ax.plot(x1, y_pred, 'r-', linewidth = 4, label = "MLP prediction")
+    ax.plot(x1, y_pred_ols, 'k--', linewidth = 2, label = "OLS prediction")
+    # ax.set_xticks(x1)
+    # ax.set_xticklabels(list_alt_names_latex, fontsize = 12)
+    ax.tick_params(axis = 'both', labelsize = 14)
+    ax.set_xlabel('Alternatives', fontsize = 14)
+    ax.set_ylabel('Utility function value', fontsize = 14)
+    # plt.legend(fontsize = 12)
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left',
+    ncol=3, mode="expand", borderaxespad=0., edgecolor = 'black', fontsize = 14)
+    plt.grid(True, linestyle = ':')
+    plt.tight_layout()
+    plt.savefig('results/scatter_line_full.pdf')
+    plt.show()
+
+
+    '''
+    # study for 2020 test dataset
+
+    X_train = dataset[:, :-1]
+    y_train = dataset[:, -1]
+
+    df_test = pd.read_csv('results/dataset_test.csv', index_col = 'Ai')
+    df_test = df_test.drop('Year', axis = 1)
+    
+    dataset_test = df_test.to_numpy()
+    X_test = dataset_test[:, :-1]
+    y_test = dataset_test[:, -1]
+
+    # train MLP
+    model.fit(X_train, y_train)
+
+    # MLP Spearman 30
+    y_pred = model.predict(X_test)
+    spearman_coeff = corrs.spearman(y_test, y_pred)
+    print(spearman_coeff)
+    df_scores.iloc[2, 0] = spearman_coeff
+
+    # MLP r2 30
+    r2_coeff = r2_score(y_test, y_pred)
+    print(r2_coeff)
+    df_scores.iloc[2, 1] = r2_coeff
+
+    X_train_ols = sm.add_constant(X_train)
+    X_test_ols = sm.add_constant(X_test)
+    
+    # train OLS
+    model_ols = sm.OLS(y_train, X_train_ols)
+    model_ols_res = model_ols.fit()
+
+    y_pred_ols = model_ols_res.predict(X_test_ols)
+
+    # OLS Spearman 30
+    spearman_coeff = corrs.spearman(y_test, y_pred_ols)
+    print(spearman_coeff)
+    df_scores.iloc[3, 0] = spearman_coeff
+
+    # OLS r2 30
+    r2_coeff = r2_score(y_test, y_pred_ols)
+    print(r2_coeff)
+    df_scores.iloc[3, 1] = r2_coeff
+
+    # save results
+    list_alt_names_latex = [r'$A_{' + str(i + 1) + '}$' for i in range(0, len(y_pred_ols))]
+    test_rank = rank_preferences(y_test, reverse=True)
+    pred_rank = rank_preferences(y_pred, reverse=True)
+    pred_rank_ols = rank_preferences(y_pred_ols, reverse=True)
+
+    df = pd.DataFrame(index = list_alt_names_latex, columns = ['Real', 'MLP', 'OLS'])
+    df['Real'] = test_rank
+    df['MLP'] = pred_rank
+    df['OLS'] = pred_rank_ols
+    df.to_csv('results/models_rankings.csv')
+
+    plot_barplot(df, 'Rankings')
+    df_scores.to_csv('results/df_scores.csv')
+    
+    data = pd.read_csv('results/models_rankings.csv', index_col='Ai')
+    # data = copy.deepcopy(df)
+    method_types = list(data.columns)
+    dict_new_heatmap_rs = Create_dictionary()
+    for el in method_types:
+        dict_new_heatmap_rs.add(el, [])
+    
+    # heatmaps for correlations coefficients
+    for i, j in [(i, j) for i in method_types[::-1] for j in method_types]:
+        dict_new_heatmap_rs[j].append(corrs.spearman(data[i], data[j]))
+        
+    df_new_heatmap_rs = pd.DataFrame(dict_new_heatmap_rs, index = method_types[::-1])
+    df_new_heatmap_rs.columns = method_types
+    
+    # correlation matrix with rw coefficient
+    draw_heatmap(df_new_heatmap_rs, 'Spearman')
+    '''
+   
+
     
 if __name__ == '__main__':
     main()

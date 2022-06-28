@@ -1,0 +1,3 @@
+,Spearman,r2,,Spearman,r2
+60 samples MLP,0.9999997,0.9908720,30 samples MLP,0.9999995,0.9966128
+60 samples OLS,0.9999998,0.9933660,30 samples OLS,0.9999994,0.9960011
