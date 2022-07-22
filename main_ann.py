@@ -13,12 +13,10 @@ from sklearn.model_selection import GridSearchCV
 from weighting_methods import stat_variance_weighting
 from normalizations import minmax_normalization
 from rank_preferences import rank_preferences
-# from correlations import spearman
 
 from saw import SAW
 
 import statsmodels.api as sm
-# from linearmodels import PooledOLS
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
 
@@ -186,7 +184,8 @@ def main():
     # Part 1
     # Datasets preparation
     '''
-    path = 'DATASET'
+    # Folder `DATA` includes performance values from the Eurostat database collected for selected 30 countries from 2010-2020.
+    path = 'DATA'
     m = 30
 
     str_years = [str(y) for y in range(2010, 2021)]
@@ -240,15 +239,18 @@ def main():
     df_train = df_nmat_full[(df_nmat_full['Year'] != '2020')]
     df_test = df_nmat_full[df_nmat_full['Year'] == '2020']
 
-    df_train.to_csv('results/dataset.csv')
-    df_test.to_csv('results/dataset_test.csv')
+    # Folder `DATASET` includes dataset.csv, which contains a dataset that can be split into
+    # training and test dataset. It contains features (normalized performance values) and
+    # target variable (SAW utility function values)
+    df_train.to_csv('DATASET/dataset.csv')
+    df_test.to_csv('DATASET/dataset_test.csv')
     '''
 
     
     # Machine Learning procedures
     # Part 2
     # load the data
-    df_dataset = pd.read_csv('results/dataset.csv', index_col = 'Ai')
+    df_dataset = pd.read_csv('DATASET/dataset.csv', index_col = 'Ai')
     df_dataset = df_dataset.drop('Year', axis = 1)
     
     dataset = df_dataset.to_numpy()
@@ -368,15 +370,15 @@ def main():
     plt.tight_layout()
     plt.savefig('results/scatter_line_full.pdf')
     plt.show()
+    
 
-
-    '''
+    
     # study for 2020 test dataset
 
     X_train = dataset[:, :-1]
     y_train = dataset[:, -1]
 
-    df_test = pd.read_csv('results/dataset_test.csv', index_col = 'Ai')
+    df_test = pd.read_csv('DATASET/dataset_test.csv', index_col = 'Ai')
     df_test = df_test.drop('Year', axis = 1)
     
     dataset_test = df_test.to_numpy()
@@ -426,6 +428,7 @@ def main():
     df['Real'] = test_rank
     df['MLP'] = pred_rank
     df['OLS'] = pred_rank_ols
+    df = df.rename_axis('Ai')
     df.to_csv('results/models_rankings.csv')
 
     plot_barplot(df, 'Rankings')
@@ -447,7 +450,7 @@ def main():
     
     # correlation matrix with rw coefficient
     draw_heatmap(df_new_heatmap_rs, 'Spearman')
-    '''
+    
    
 
     
